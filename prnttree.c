@@ -8,6 +8,7 @@
 #include    "symtab.h"
 #include    "dsm_extension.h"
 #include    "globals.h"
+#include    "loop_analysis.h"
 
 int  ptline, ptpos;
 
@@ -1527,7 +1528,7 @@ int  print_recur(treenode *root, int level, FILE *fp)
             if ((root->hdr.tok == RETURN) || (root->hdr.tok == GOTO))
             {
                 /*  fputs("(",fp);  */
-                print_recur(root->lnode, level, fp);
+                print_recur(root->lnode, level, fp, h_fp);
                 /*  fputs(")",fp);  */
             }
             FPUTS("{TN_JUMP}", fp);
@@ -1536,17 +1537,17 @@ int  print_recur(treenode *root, int level, FILE *fp)
         case TN_SWITCH:
             FPUTS("[TN_SWITCH]", fp);
             fputs("switch (", fp);
-            print_recur(root->lnode, level, fp);
+            print_recur(root->lnode, level, fp, h_fp);
             fputs(")\n", fp);
-            print_recur(root->rnode, level+1, fp);
+            print_recur(root->rnode, level+1, fp, h_fp);
             FPUTS("{TN_SWITCH}", fp);
             break;
 
         case TN_INDEX:
             FPUTS("[TN_INDEX]", fp);
-            print_recur(root->lnode, level, fp);
+            print_recur(root->lnode, level, fp, h_fp);
             fputs("[",fp);
-            print_recur(root->rnode, level, fp);
+            print_recur(root->rnode, level, fp, h_fp);
             fputs("]",fp);
             FPUTS("{TN_INDEX}", fp);
             break;
@@ -1554,12 +1555,12 @@ int  print_recur(treenode *root, int level, FILE *fp)
         case TN_DEREF:
             FPUTS("[TN_DEREF]", fp);
             fputs("*",fp);
-            print_recur(root->lnode, level, fp);
+            print_recur(root->lnode, level, fp, h_fp);
             if (root->rnode && (root->rnode->hdr.type == TN_IDENT))
-              print_recur(root->rnode, level, fp);
+              print_recur(root->rnode, level, fp, h_fp);
             else {
               fputs("(",fp);
-              print_recur(root->rnode, level, fp);
+              print_recur(root->rnode, level, fp, h_fp);
               fputs(")",fp);
             }
             FPUTS("{TN_DEREF}", fp);
@@ -1567,23 +1568,23 @@ int  print_recur(treenode *root, int level, FILE *fp)
 
         case TN_SELECT:
             FPUTS("[TN_SELECT]", fp);
-            print_recur(root->lnode, level, fp);
+            print_recur(root->lnode, level, fp, h_fp);
 
             if (root->hdr.tok == ARROW)
                 fputs("->",fp);
             else
                 fputs(".",fp);
 
-            print_recur(root->rnode, level, fp);
+            print_recur(root->rnode, level, fp, h_fp);
             FPUTS("{TN_SELECT}", fp);
             break;
 
         case TN_ASSIGN:
             FPUTS("[TN_ASSIGN]", fp);
-            print_recur(root->lnode, level, fp);
+            print_recur(root->lnode, level, fp, h_fp);
             fputs(toksym(root->hdr.tok,1), fp);
             //printf(" printing ==> %s %d %d \n",toksym(root->hdr.tok,1),root->hdr.type,root->hdr.tok);
-            print_recur(root->rnode, level, fp);
+            print_recur(root->rnode, level, fp, h_fp);
             FPUTS("{TN_ASSIGN}", fp);
             break;
 
@@ -1592,39 +1593,39 @@ int  print_recur(treenode *root, int level, FILE *fp)
             switch (root->hdr.tok) {
               case CASE:
                 fputs(toksym(root->hdr.tok,1), fp);
-                print_recur(root->lnode, level, fp);
-                print_recur(root->rnode, level, fp);
+                print_recur(root->lnode, level, fp, h_fp);
+                print_recur(root->rnode, level, fp, h_fp);
                 break;
 
               case SIZEOF:
                 fputs(toksym(root->hdr.tok,0), fp);
                 fputs("(", fp);
-                print_recur(root->lnode, level, fp);
-                print_recur(root->rnode, level, fp);
+                print_recur(root->lnode, level, fp, h_fp);
+                print_recur(root->rnode, level, fp, h_fp);
                 fputs(")", fp);
                 break;
 
               case INCR:
               case DECR:
-                print_recur(root->lnode, level, fp);
+                print_recur(root->lnode, level, fp, h_fp);
                 fputs(toksym(root->hdr.tok,1), fp);
-                print_recur(root->rnode, level, fp);
+                print_recur(root->rnode, level, fp, h_fp);
                 break;
 
               case B_AND:
                 if (root->lnode == NULL) {
                   fputs(toksym(root->hdr.tok,1), fp);
                   fputs("(", fp);
-                  print_recur(root->rnode, level, fp);
+                  print_recur(root->rnode, level, fp, h_fp);
                   fputs(")", fp);
                   break;
                 }
 
               default:
                 fputs("(", fp);
-                print_recur(root->lnode, level, fp);
+                print_recur(root->lnode, level, fp, h_fp);
                 fputs(toksym(root->hdr.tok,1), fp);
-                print_recur(root->rnode, level, fp);
+                print_recur(root->rnode, level, fp, h_fp);
                 fputs(")", fp);
                 break;
             }
@@ -1634,33 +1635,33 @@ int  print_recur(treenode *root, int level, FILE *fp)
         case TN_WHILE:
             FPUTS("[TN_WHILE]", fp);
             fputs("while (", fp);
-            print_recur(root->lnode, level, fp);
+            print_recur(root->lnode, level, fp, h_fp);
             fputs(")\n", fp);
-            print_recur(root->rnode, level+1, fp);
+            print_recur(root->rnode, level+1, fp, h_fp);
             FPUTS("{TN_WHILE}", fp);
             return(0);
 
         case TN_DOWHILE:
             FPUTS("[TN_DOWHILE]", fp);
             fputs("do\n", fp);
-            print_recur(root->rnode, level+1, fp);
+            print_recur(root->rnode, level+1, fp, h_fp);
             if ((root->rnode->hdr.type == TN_STEMNT)
                     && (root->rnode->rnode->hdr.type != TN_BLOCK))
                 fputs(";", fp);
             fputs("\n",fp);
             indent(level,fp);
             fputs("while (", fp);
-            print_recur(root->lnode, level, fp);
+            print_recur(root->lnode, level, fp, h_fp);
             fputs(")", fp);
             FPUTS("{TN_DOWHILE}", fp);
             break;
 
         case TN_LABEL:
             FPUTS("[TN_LABEL 2]", fp);
-            print_recur(root->lnode, level, fp);
+            print_recur(root->lnode, level, fp, h_fp);
             if (root->lnode && (root->lnode->hdr.type != TN_LABEL))
               fputs(":\n",fp);
-            print_recur(root->rnode, level, fp);
+            print_recur(root->rnode, level, fp, h_fp);
             FPUTS("{TN_LABEL 2}", fp);
             break;
 
@@ -2457,6 +2458,8 @@ void  print_tree(treenode *root, FILE *fp)
 {
     flat_recur(root,&root);
     print_recur(root,0,fp);
+    // Add loop analysis
+    analyze_program(root, fp);
 }
 
 /*  ###############################################################  */

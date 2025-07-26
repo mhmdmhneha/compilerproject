@@ -14,6 +14,7 @@
 #include    "tree.h"
 #include    "prnttree.h"
 #include    "code_generator.h"
+#include "loop_analysis.h"
 
 
 /*  ###############################################################  */
@@ -102,7 +103,7 @@ int processArgs( int argc, char **argv )
 
 int main( int argc, char **argv )
 {
-int   i, nf;
+    int   i, nf;
 FILE *fp;
 #ifdef  USE_CPP
 char  cpp_cmmd[500];
@@ -203,6 +204,7 @@ argument, as in cpp
             /* Show data */
 			if(show_pcode)
 				print_pcode(parse_tree,stdout);
+				analyze_program(parse_tree, stdout);
             else if(show_AST)
 				show_tree(parse_tree,stdout);
 			else if (show_SymbolTable)
